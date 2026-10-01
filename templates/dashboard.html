@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Disaster Management Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --red:    #E83B3B;
+      --amber:  #F59E0B;
+      --teal:   #0BBFBF;
+      --dark:   #0D0F14;
+      --panel:  #13161E;
+      --card:   #1A1E2A;
+      --border: rgba(255,255,255,0.07);
+      --text:   #E8EAF0;
+      --muted:  #6B7280;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--dark);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* noise overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    /* glow blobs */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px; left: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(11,191,191,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13,15,20,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      height: 56px;
+    }
+
+    .nav-brand {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 0.08em;
+      color: var(--teal);
+      text-transform: uppercase;
+      margin-right: auto;
+      text-decoration: none;
+    }
+
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 5px 13px;
+      height: auto;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 10px;
+      border-bottom: none;
+      transition: opacity 0.2s, transform 0.15s;
+      white-space: nowrap;
+    }
+
+    nav a:hover { opacity: 0.85; transform: translateY(-1px); }
+    nav a.active { outline: 2px solid rgba(255,255,255,0.35); }
+
+    nav a .nav-icon {
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    nav a .nav-label { font-size: 13px; }
+
+    .ni-home     { background: #4F7EFF; }
+    .ni-victim   { background: #9B59FF; }
+    .ni-emergency{ background: #E83B3B; }
+    .ni-dashboard{ background: #2563EB; }
+    .ni-alerts   { background: #F59E0B; }
+    .ni-resources{ background: #10B981; }
+    .ni-manage   { background: #EC4899; }
+    .ni-analytics{ background: #06B6D4; }
+    .ni-query     { background: #1e3a5f; } 
+
+    /* ── HERO HEADER ── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      padding: 3.5rem 3rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .hero-eyebrow {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 10px;
+    }
+
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .hero h1 span {
+      color: transparent;
+      -webkit-text-stroke: 1px rgba(255,255,255,0.25);
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(232,59,59,0.12);
+      border: 1px solid rgba(232,59,59,0.3);
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--red);
+    }
+
+    .live-dot {
+      width: 7px; height: 7px;
+      background: var(--red);
+      border-radius: 50%;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* ── MAIN LAYOUT ── */
+    main {
+      position: relative;
+      z-index: 1;
+      padding: 2.5rem 3rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 20px;
+    }
+
+    /* ── STAT CARDS ── */
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 28px 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.25s, border-color 0.25s;
+      animation: fadeUp 0.5s both;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.12s; }
+    .stat-card:nth-child(3) { animation-delay: 0.19s; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+
+    .stat-card.red::before   { background: var(--red); }
+    .stat-card.amber::before { background: var(--amber); }
+    .stat-card.teal::before  { background: var(--teal); }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255,255,255,0.13);
+    }
+
+    .stat-card .card-glow {
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .stat-card.red   .card-glow { background: radial-gradient(circle, rgba(232,59,59,0.12) 0%, transparent 70%); }
+    .stat-card.amber .card-glow { background: radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%); }
+    .stat-card.teal  .card-glow { background: radial-gradient(circle, rgba(11,191,191,0.12) 0%, transparent 70%); }
+
+    .stat-icon {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+      font-size: 18px;
+    }
+
+    .stat-card.red   .stat-icon { background: rgba(232,59,59,0.15); }
+    .stat-card.amber .stat-icon { background: rgba(245,158,11,0.15); }
+    .stat-card.teal  .stat-icon { background: rgba(11,191,191,0.15); }
+
+    .stat-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 52px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      margin-bottom: 8px;
+    }
+
+    .stat-card.red   .stat-value { color: var(--red); }
+    .stat-card.amber .stat-value { color: var(--amber); }
+    .stat-card.teal  .stat-value { color: var(--teal); }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 400;
+      letter-spacing: 0.02em;
+    }
+
+    .stat-trend {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 100px;
+    }
+
+    .stat-card.red   .stat-trend { background: rgba(232,59,59,0.12); color: var(--red); }
+    .stat-card.amber .stat-trend { background: rgba(245,158,11,0.12); color: var(--amber); }
+    .stat-card.teal  .stat-trend { background: rgba(11,191,191,0.12); color: var(--teal); }
+
+    /* ── CHART PANEL ── */
+    .chart-panel {
+      grid-column: 1 / 3;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      animation: fadeUp 0.5s 0.26s both;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .panel-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .panel-tag {
+      font-size: 11px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 4px 12px;
+    }
+
+    .chart-wrap {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .chart-canvas-wrap {
+      flex: 0 0 260px;
+      height: 260px;
+    }
+
+    .legend-list {
+      flex: 1;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .legend-text { flex: 1; font-size: 14px; color: var(--muted); }
+    .legend-val  { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+
+    /* ── SIDE PANEL ── */
+    .side-panel {
+      grid-column: 3 / 4;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      animation: fadeUp 0.5s 0.32s both;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .alert-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: background 0.2s;
+    }
+
+    .alert-item:hover { background: rgba(255,255,255,0.06); }
+
+    .alert-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+
+    .alert-item.critical .alert-dot { background: var(--red); }
+    .alert-item.warning  .alert-dot { background: var(--amber); }
+    .alert-item.info     .alert-dot { background: var(--teal); }
+
+    .alert-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+    .alert-sub   { font-size: 11px; color: var(--muted); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr 1fr; padding: 1.5rem; }
+      .chart-panel { grid-column: 1 / 3; }
+      .side-panel  { grid-column: 1 / 3; }
+      .chart-wrap  { flex-direction: column; }
+    }
+
+    @media (max-width: 600px) {
+      main { grid-template-columns: 1fr; }
+      .chart-panel, .side-panel { grid-column: 1; }
+      nav a { font-size: 11px; padding: 0 8px; }
+      .hero { padding: 2rem 1.5rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="nav-brand" href="/">⬡ DisasterOps</a>
+    <a href="/"><span class="nav-icon ni-home">🏠</span><span class="nav-label">Home</span></a>
+    <a href="/victim"><span class="nav-icon ni-victim">👤</span><span class="nav-label">Victim</span></a>
+    <a href="/request"><span class="nav-icon ni-emergency">🚨</span><span class="nav-label">Emergency</span></a>
+    <a href="/dashboard" class="active"><span class="nav-icon ni-dashboard">📊</span><span class="nav-label">Dashboard</span></a>
+    <a href="/alerts"><span class="nav-icon ni-alerts">🔔</span><span class="nav-label">Alerts</span></a>
+    <a href="/resources"><span class="nav-icon ni-resources">📦</span><span class="nav-label">Resources</span></a>
+    <a href="/manage_resources"><span class="nav-icon ni-manage">⚙️</span><span class="nav-label">Manage</span></a>
+    <a href="/analytics"><span class="nav-icon ni-analytics">📈</span><span class="nav-label">Analytics</span></a>
+    <a href="/query"><span class="nav-icon ni-query">🗄️</span><span class="nav-label">Query</span></a>
+  </nav>
+
+  <div class="hero">
+    <div>
+      <div class="hero-eyebrow">Operations Center</div>
+      <h1>Disaster <span>Management</span><br>Dashboard</h1>
+    </div>
+    <div class="live-badge">
+      <span class="live-dot"></span>
+      Live monitoring
+    </div>
+  </div>
+
+  <main>
+
+    <div class="stat-card red">
+      <div class="card-glow"></div>
+      <div class="stat-icon">🆘</div>
+      <div class="stat-value">{{ victims }}</div>
+      <div class="stat-label">Total Victims</div>
+      <div class="stat-trend">↑ Active</div>
+    </div>
+
+    <div class="stat-card amber">
+      <div class="card-glow"></div>
+      <div class="stat-icon">⏳</div>
+      <div class="stat-value">{{ requests }}</div>
+      <div class="stat-label">Pending Requests</div>
+      <div class="stat-trend">Needs action</div>
+    </div>
+
+    <div class="stat-card teal">
+      <div class="card-glow"></div>
+      <div class="stat-icon">📦</div>
+      <div class="stat-value">{{ resources }}</div>
+      <div class="stat-label">Available Resources</div>
+      <div class="stat-trend">✓ Stocked</div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-panel">
+      <div class="panel-header">
+        <div class="panel-title">Disaster Statistics Overview</div>
+        <div class="panel-tag">Real-time</div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-canvas-wrap">
+          <canvas id="myChart"></canvas>
+        </div>
+        <ul class="legend-list">
+          <li class="legend-item">
+            <span class="legend-dot" style="background:var(--red)"></span>
+            <span class="legend-text">Victims</span>
+            <span class="legend-val" style="color:var(--red)">{{ victims }}</span>
+          </li>
+          <li class="legend-item">
+            <span class="legend-dot" style="background:var(--amber)"></span>
+            <span class="legend-text">Pending Requests</span>
+            <span class="legend-val" style="color:var(--amber)">{{ requests }}</span>
+          </li>
+          <li class="legend-item">
+            <span class="legend-dot" style="background:var(--teal)"></span>
+            <span class="legend-text">Available Resources</span>
+            <span class="legend-val" style="color:var(--teal)">{{ resources }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Alerts sidebar -->
+    <div class="side-panel">
+      <div class="panel-header">
+        <div class="panel-title">Recent Alerts</div>
+        <div class="panel-tag">Live</div>
+      </div>
+
+      <div class="alert-item critical">
+        <span class="alert-dot"></span>
+        <div>
+          <div class="alert-title">Critical: Mass casualty event</div>
+          <div class="alert-sub">Zone A · 2 min ago</div>
+        </div>
+      </div>
+
+      <div class="alert-item warning">
+        <span class="alert-dot"></span>
+        <div>
+          <div class="alert-title">Supply shortage — medical kits</div>
+          <div class="alert-sub">Warehouse B · 18 min ago</div>
+        </div>
+      </div>
+
+      <div class="alert-item info">
+        <span class="alert-dot"></span>
+        <div>
+          <div class="alert-title">Rescue team deployed</div>
+          <div class="alert-sub">Sector 7 · 34 min ago</div>
+        </div>
+      </div>
+
+      <div class="alert-item warning">
+        <span class="alert-dot"></span>
+        <div>
+          <div class="alert-title">5 requests awaiting triage</div>
+          <div class="alert-sub">Command · 1 hr ago</div>
+        </div>
+      </div>
+
+      <div class="alert-item info">
+        <span class="alert-dot"></span>
+        <div>
+          <div class="alert-title">Resources restocked: 2300</div>
+          <div class="alert-sub">Depot C · 2 hr ago</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const ctx = document.getElementById('myChart');
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Victims', 'Pending Requests', 'Resources'],
+        datasets: [{
+          data: [{{ victims }}, {{ requests }}, {{ resources }}],
+          backgroundColor: ['#E83B3B', '#F59E0B', '#0BBFBF'],
+          borderColor: '#1A1E2A',
+          borderWidth: 4,
+          hoverOffset: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '72%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1A1E2A',
+            borderColor: 'rgba(255,255,255,0.1)',
+            borderWidth: 1,
+            titleColor: '#E8EAF0',
+            bodyColor: '#6B7280',
+            padding: 12,
+            cornerRadius: 10
+          }
+        }
+      }
+    });
+  </script>
+
+</body>
+</html>

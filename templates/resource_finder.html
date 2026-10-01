@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Resource Finder — DisasterOps</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:        #0a0a0c;
+            --surface:   #111116;
+            --surface2:  #18181f;
+            --border:    rgba(255,255,255,0.07);
+            --accent:    #e8321a;
+            --accent2:   #ff6b35;
+            --teal:      #00d4aa;
+            --amber:     #f5a623;
+            --text:      #e8e8f0;
+            --muted:     #6b6b80;
+            --label:     #9999b0;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Syne', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── NOISE OVERLAY ── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        /* ── NAVBAR ── */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10,10,12,0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0 24px;
+            height: 60px;
+        }
+
+        .navbar .logo {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 20px;
+            letter-spacing: 0.12em;
+            color: var(--text);
+            text-decoration: none;
+            margin-right: 32px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .navbar .logo span {
+            display: inline-block;
+            width: 8px; height: 8px;
+            background: var(--teal);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--teal);
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.7); }
+        }
+
+        .navbar a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            padding: 6px 14px;
+            border-radius: 6px;
+            transition: color 0.2s, background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .navbar a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+        .navbar a.active { color: var(--teal); background: rgba(0,212,170,0.08); }
+
+        .navbar a .nav-icon { font-size: 15px; }
+
+        /* ── HERO HEADER ── */
+        .hero {
+            position: relative;
+            padding: 64px 40px 48px;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .hero::after {
+            content: 'RESOURCES';
+            position: absolute;
+            right: -20px;
+            top: 10px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 140px;
+            color: rgba(255,255,255,0.03);
+            letter-spacing: 0.05em;
+            user-select: none;
+            pointer-events: none;
+            line-height: 1;
+        }
+
+        .hero-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            color: var(--teal);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hero-label::before {
+            content: '';
+            display: inline-block;
+            width: 24px; height: 1px;
+            background: var(--teal);
+        }
+
+        .hero-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(52px, 6vw, 88px);
+            line-height: 0.95;
+            letter-spacing: 0.02em;
+            color: var(--text);
+        }
+
+        .hero-title .ghost {
+            color: transparent;
+            -webkit-text-stroke: 1px rgba(255,255,255,0.15);
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 24px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: rgba(232,50,26,0.12);
+            border: 1px solid rgba(232,50,26,0.3);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent2);
+            letter-spacing: 0.04em;
+        }
+
+        .hero-badge .dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        /* ── MAIN LAYOUT ── */
+        .main {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+            max-width: 1200px;
+            margin: 0 auto 60px;
+            padding: 0 40px;
+        }
+
+        /* ── LEFT PANEL (image + stats) ── */
+        .left-panel {
+            background: var(--surface);
+            border-radius: 16px 0 0 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .scene {
+            position: relative;
+            flex: 1;
+            min-height: 260px;
+            background:
+                linear-gradient(180deg, rgba(10,10,12,0) 40%, rgba(10,10,12,0.95) 100%),
+                linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            align-items: flex-end;
+            padding: 28px;
+        }
+
+        .scene-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,212,170,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,212,170,0.04) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        .scene-content { position: relative; z-index: 1; }
+
+        .scene-content h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 32px;
+            line-height: 1.1;
+            letter-spacing: 0.03em;
+            margin-bottom: 10px;
+        }
+
+        .scene-content p {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.6;
+            max-width: 280px;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            border-top: 1px solid var(--border);
+        }
+
+        .stat-box {
+            padding: 20px 18px;
+            border-right: 1px solid var(--border);
+            position: relative;
+        }
+
+        .stat-box:last-child { border-right: none; }
+
+        .stat-number {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 34px;
+            letter-spacing: 0.02em;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .stat-number.teal  { color: var(--teal); }
+        .stat-number.amber { color: var(--amber); }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 4px;
+            letter-spacing: 0.04em;
+        }
+
+        /* ── RIGHT PANEL (form) ── */
+        .right-panel {
+            background: var(--surface2);
+            border-radius: 0 16px 16px 0;
+            border: 1px solid var(--border);
+            border-left: none;
+            padding: 40px 36px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 36px;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+
+        .panel-subtitle {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 36px;
+            line-height: 1.6;
+        }
+
+        .field-group { margin-bottom: 24px; }
+
+        .field-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--label);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .field-input {
+            width: 100%;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+
+        .field-input::placeholder { color: var(--muted); }
+
+        .field-input:focus {
+            border-color: var(--teal);
+            background: rgba(0,212,170,0.04);
+            box-shadow: 0 0 0 3px rgba(0,212,170,0.08);
+        }
+
+        .field-input::-webkit-inner-spin-button,
+        .field-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Syne', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+            margin-top: auto;
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 60%);
+        }
+
+        .submit-btn:hover {
+            background: #c9260f;
+            box-shadow: 0 8px 32px rgba(232,50,26,0.4);
+            transform: translateY(-1px);
+        }
+
+        .submit-btn:active { transform: translateY(0); }
+
+        /* ── RESULTS SECTION ── */
+        .results-section {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto 60px;
+            padding: 0 40px;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .results-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 28px;
+            letter-spacing: 0.05em;
+        }
+
+        .results-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: rgba(0,212,170,0.1);
+            border: 1px solid rgba(0,212,170,0.2);
+            color: var(--teal);
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .resource-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s, transform 0.2s;
+            animation: card-in 0.4s ease both;
+        }
+
+        .resource-card:hover {
+            border-color: rgba(0,212,170,0.25);
+            transform: translateY(-3px);
+        }
+
+        @keyframes card-in {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .resource-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--teal), var(--accent));
+        }
+
+        .card-icon {
+            width: 40px; height: 40px;
+            background: rgba(0,212,170,0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin-bottom: 14px;
+        }
+
+        .card-name {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: 0.02em;
+        }
+
+        .card-qty-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+        }
+
+        .card-qty-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+
+        .card-qty-value {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 28px;
+            color: var(--teal);
+            letter-spacing: 0.03em;
+            line-height: 1;
+        }
+
+        .card-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--teal);
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: rgba(0,212,170,0.1);
+            border: 1px solid rgba(0,212,170,0.2);
+        }
+
+        .card-status .dot {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: var(--teal);
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        /* ── EMPTY STATE ── */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+
+        .empty-state .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+        .empty-state p { font-size: 14px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <a href="/" class="logo"><span></span>DISASTEROPS</a>
+        <a href="/"><span class="nav-icon">🏠</span> Home</a>
+        <a href="/victim"><span class="nav-icon">🙍</span> Victim</a>
+        <a href="/request"><span class="nav-icon">🚨</span> Emergency</a>
+        <a href="/dashboard"><span class="nav-icon">📊</span> Dashboard</a>
+        <a href="/alerts"><span class="nav-icon">🔔</span> Alerts</a>
+        <a href="/resources" class="active"><span class="nav-icon">📦</span> Resources</a>
+        <a href="/manage_resources"><span class="nav-icon">⚙️</span> Manage</a>
+        <a href="/analytics"><span class="nav-icon">📈</span> Analytics</a>
+        <a href="/query"><span class="nav-icon ni-query">🗄️</span><span class="nav-label">Query</span></a>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-label">Resource Operations</div>
+        <h1 class="hero-title">Nearest<br><span class="ghost">Resource</span> Finder</h1>
+        <div class="hero-badge">
+            <span class="dot"></span>
+            System Active — Real-time inventory
+        </div>
+    </section>
+
+    <!-- MAIN GRID -->
+    <div class="main">
+
+        <!-- LEFT: scene + stats -->
+        <div class="left-panel">
+            <div class="scene">
+                <div class="scene-grid"></div>
+                <div class="scene-content">
+                    <h2>Every resource<br>matters in a crisis.</h2>
+                    <p>Locate the nearest available supplies and relief resources to deploy them where they're needed most.</p>
+                </div>
+            </div>
+            <div class="stats-row">
+                <div class="stat-box">
+                    <div class="stat-number">8</div>
+                    <div class="stat-label">Active victims</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number amber">5</div>
+                    <div class="stat-label">Pending requests</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number teal">2300</div>
+                    <div class="stat-label">Resources ready</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: form -->
+        <div class="right-panel">
+            <h2 class="panel-title">Find Resources</h2>
+            <p class="panel-subtitle">Enter a location ID to surface the nearest available relief resources sorted by proximity and availability.</p>
+
+            <form method="POST">
+                <div class="field-group">
+                    <label class="field-label" for="location_id">Location ID</label>
+                    <input
+                        class="field-input"
+                        type="number"
+                        id="location_id"
+                        name="location_id"
+                        placeholder="e.g. 104"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    📍 Find Nearest Resources
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- RESULTS -->
+    {% if searched %}
+        {% if resources %}
+        <div class="results-section">
+            <div class="results-header">
+                <h3 class="results-title">Available Resources</h3>
+                <span class="results-count">{{ resources|length }} found</span>
+            </div>
+            <div class="results-grid">
+                {% for resource in resources %}
+                <div class="resource-card" style="animation-delay: {{ loop.index0 * 0.07 }}s">
+                    <div class="card-icon">📦</div>
+                    <div class="card-name">{{ resource[1] }}</div>
+                    <div class="card-status"><span class="dot"></span> Available</div>
+                    <div class="card-qty-row">
+                        <span class="card-qty-label">Qty in stock</span>
+                        <span class="card-qty-value">{{ resource[2] }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="results-section">
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <p>No resources found for this location ID.<br>Try a different location.</p>
+            </div>
+        </div>
+        {% endif %}
+    {% endif %}
+
+</body>
+</html>

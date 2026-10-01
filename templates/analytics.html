@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background: #0b1120;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        /* ── Navbar ── */
+        .navbar {
+            background: #1c1a17;
+            padding: 0 36px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 64px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.55);
+            border-bottom: 1px solid rgba(180,150,100,0.15);
+        }
+        .nav-brand { display:flex; align-items:center; gap:10px; text-decoration:none; }
+        .nav-brand-text { font-family:'Montserrat',sans-serif; font-size:20px; font-weight:700; }
+        .nav-brand-text .white { color:#f5f0e8; }
+        .nav-brand-text .blue  { color:#60a5fa; }
+        .nav-links { display:flex; align-items:center; gap:4px; }
+        .nav-links a {
+            color:#c8bfaf; text-decoration:none; font-size:13px; font-weight:500;
+            padding:5px 11px 5px 7px; border-radius:20px;
+            display:flex; align-items:center; gap:6px;
+            transition:color 0.2s, background 0.2s;
+        }
+        .nav-links a:hover { background:rgba(255,255,255,0.07); color:#f5f0e8; }
+        .nav-links a.active { background:rgba(37,99,235,0.28); color:#ffffff; }
+        .nav-icon-pill {
+            width:24px; height:24px; border-radius:7px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:13px; flex-shrink:0;
+        }
+
+        /* ── Page Header ── */
+        .page-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1d4ed8 100%);
+            padding: 36px 60px 32px;
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::before {
+            content:''; position:absolute; top:-60px; right:-60px;
+            width:260px; height:260px; border-radius:50%;
+            background:rgba(59,130,246,0.12);
+        }
+        .page-header h1 {
+            font-family:'Montserrat',sans-serif; font-size:28px;
+            font-weight:800; color:#fff; position:relative; z-index:1;
+        }
+        .page-header p {
+            font-size:13px; color:#93c5fd; margin-top:5px;
+            position:relative; z-index:1;
+        }
+
+        /* ── Main ── */
+        .main {
+            padding: 36px 60px 60px;
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        /* ── Stat Cards ── */
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .stat-card {
+            border-radius: 14px;
+            padding: 22px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-3px); }
+        .stat-card.high { background: linear-gradient(135deg, #7f1d1d, #b91c1c); }
+        .stat-card.med  { background: linear-gradient(135deg, #78350f, #b45309); }
+        .stat-card.low  { background: linear-gradient(135deg, #14532d, #15803d); }
+        .stat-card::after {
+            content:''; position:absolute; top:-20px; right:-20px;
+            width:80px; height:80px; border-radius:50%;
+            background:rgba(255,255,255,0.08);
+        }
+        .stat-icon { font-size:32px; flex-shrink:0; }
+        .stat-info { flex:1; }
+        .stat-label {
+            font-size:11px; font-weight:600; text-transform:uppercase;
+            letter-spacing:1px; color:rgba(255,255,255,0.7); margin-bottom:3px;
+        }
+        .stat-value {
+            font-family:'Montserrat',sans-serif; font-size:34px;
+            font-weight:800; color:#ffffff; line-height:1;
+        }
+        .stat-sub { font-size:11px; color:rgba(255,255,255,0.55); margin-top:3px; }
+
+        /* ── Chart Cards ── */
+        .chart-card {
+            background: #131c2e;
+            border-radius: 16px;
+            padding: 28px 32px;
+            border: 1px solid rgba(59,130,246,0.12);
+        }
+        .chart-title {
+            font-family:'Montserrat',sans-serif; font-size:15px;
+            font-weight:700; color:#e2e8f0; margin-bottom:4px;
+            display:flex; align-items:center; gap:8px;
+        }
+        .chart-subtitle { font-size:12px; color:#475569; margin-bottom:24px; }
+
+        /* ── Big vertical bar chart ── */
+        #barChart { width:100% !important; }
+
+        /* ── Two col row ── */
+        .two-col { display:grid; grid-template-columns:1.1fr 0.9fr; gap:24px; }
+
+        /* ── Horizontal bar ── */
+        #hbarChart { width:100% !important; }
+
+        /* ── Progress Bars ── */
+        .priority-list { display:flex; flex-direction:column; gap:22px; margin-top:8px; }
+        .priority-item { display:flex; flex-direction:column; gap:7px; }
+        .priority-header { display:flex; justify-content:space-between; align-items:center; }
+        .priority-label-row { display:flex; align-items:center; gap:8px; }
+        .priority-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        .priority-name { font-size:13px; color:#94a3b8; font-weight:500; }
+        .priority-pct  { font-size:12px; color:#64748b; }
+        .priority-count-badge {
+            font-family:'Montserrat',sans-serif; font-size:15px;
+            font-weight:700; color:#e2e8f0;
+        }
+        .priority-bar-wrap {
+            background:rgba(255,255,255,0.07);
+            border-radius:8px; height:10px; overflow:hidden;
+        }
+        .priority-bar { height:100%; border-radius:8px; transition:width 1.2s ease; }
+
+        /* ── Footer ── */
+        .footer {
+            background: linear-gradient(90deg, #1e3a8a, #1e40af);
+            color: #e0e7ff;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        @media (max-width: 900px) {
+            .stat-cards { grid-template-columns:1fr; }
+            .two-col { grid-template-columns:1fr; }
+            .main { padding:24px 16px; }
+            .page-header { padding:24px 16px; }
+            .navbar { padding:0 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <a href="/" class="nav-brand">
+        <div style="display:flex;gap:2px;font-size:22px;">🚨🌊</div>
+        <div class="nav-brand-text">
+            <span class="white">Disaster </span><span class="blue">Management</span>
+        </div>
+    </a>
+    <div class="nav-links">
+        <a href="/"><span class="nav-icon-pill" style="background:#1d4ed8">🏠</span>Home</a>
+        <a href="/victim"><span class="nav-icon-pill" style="background:#7c3aed">👤</span>Victim</a>
+        <a href="/request"><span class="nav-icon-pill" style="background:#b91c1c">🆘</span>Emergency</a>
+        <a href="/dashboard"><span class="nav-icon-pill" style="background:#0e7490">📊</span>Dashboard</a>
+        <a href="/alerts"><span class="nav-icon-pill" style="background:#b45309">🔔</span>Alerts</a>
+        <a href="/resources"><span class="nav-icon-pill" style="background:#065f46">📦</span>Resources</a>
+        <a href="/manage_resources"><span class="nav-icon-pill" style="background:#be123c">⚙️</span>Manage</a>
+        <a href="/analytics" class="active"><span class="nav-icon-pill" style="background:#9d174d">📈</span>Analytics</a>
+        <a href="/query"><span class="nav-icon-pill" style="background:#1e3a5f">🗄️</span>Query</a>
+    </div>
+</nav>
+
+<!-- Header -->
+<div class="page-header">
+    <h1>📈 Emergency Request Analytics</h1>
+    <p>Real-time breakdown of emergency request priorities across all incidents</p>
+</div>
+
+<div class="main">
+
+    <!-- Stat Cards -->
+    <div class="stat-cards">
+        <div class="stat-card high">
+            <div class="stat-icon">🔴</div>
+            <div class="stat-info">
+                <div class="stat-label">High Priority</div>
+                <div class="stat-value">{{ high }}</div>
+                <div class="stat-sub">Critical — immediate response</div>
+            </div>
+        </div>
+        <div class="stat-card med">
+            <div class="stat-icon">🟠</div>
+            <div class="stat-info">
+                <div class="stat-label">Medium Priority</div>
+                <div class="stat-value">{{ medium }}</div>
+                <div class="stat-sub">Urgent — respond soon</div>
+            </div>
+        </div>
+        <div class="stat-card low">
+            <div class="stat-icon">🟢</div>
+            <div class="stat-info">
+                <div class="stat-label">Low Priority</div>
+                <div class="stat-value">{{ low }}</div>
+                <div class="stat-sub">Stable — monitor closely</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full-width tall bar chart -->
+    <div class="chart-card">
+        <div class="chart-title"><span>📊</span> Priority Distribution — Bar Chart</div>
+        <div class="chart-subtitle">Number of emergency requests per priority level</div>
+        <canvas id="barChart" height="110"></canvas>
+    </div>
+
+    <!-- Two-col: horizontal bar + doughnut -->
+    <div class="two-col">
+
+        <div class="chart-card">
+            <div class="chart-title"><span>📉</span> Horizontal Comparison</div>
+            <div class="chart-subtitle">Side-by-side priority request count</div>
+            <canvas id="hbarChart" height="160"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-title"><span>🍩</span> Priority Share</div>
+            <div class="chart-subtitle">Proportional breakdown of all requests</div>
+            <canvas id="doughnutChart" height="160"></canvas>
+        </div>
+
+    </div>
+
+    <!-- Full-width progress breakdown -->
+    <div class="chart-card">
+        <div class="chart-title"><span>🎯</span> Priority Breakdown</div>
+        <div class="chart-subtitle">Percentage share of each priority level across total requests</div>
+        <div class="priority-list" id="priorityList"></div>
+    </div>
+
+</div>
+
+<!-- Footer -->
+<div class="footer">
+    
+</div>
+
+<script>
+    const high   = {{ high }};
+    const medium = {{ medium }};
+    const low    = {{ low }};
+    const total  = (high + medium + low) || 1;
+
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = "'Open Sans', sans-serif";
+
+    const tooltipDefaults = {
+        backgroundColor: '#1e293b',
+        borderColor: 'rgba(59,130,246,0.3)',
+        borderWidth: 1,
+        titleColor: '#f1f5f9',
+        bodyColor: '#94a3b8',
+        padding: 12,
+        cornerRadius: 8
+    };
+
+    // ── Tall Bar Chart ──
+    new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: {
+            labels: ['🔴  High Priority', '🟠  Medium Priority', '🟢  Low Priority'],
+            datasets: [{
+                label: 'Requests',
+                data: [high, medium, low],
+                backgroundColor: ['rgba(239,68,68,0.82)','rgba(245,158,11,0.82)','rgba(34,197,94,0.82)'],
+                borderColor: ['#ef4444','#f59e0b','#22c55e'],
+                borderWidth: 2,
+                borderRadius: 12,
+                borderSkipped: false,
+                barThickness: 80
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltipDefaults, callbacks: { label: c => ` ${c.parsed.y} request${c.parsed.y!==1?'s':''}` } }
+            },
+            scales: {
+                x: {
+                    ticks: { color:'#94a3b8', font:{ size:14, weight:'600' } },
+                    grid: { display:false },
+                    border: { color:'rgba(255,255,255,0.06)' }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color:'#475569', font:{ size:12 }, stepSize:1 },
+                    grid: { color:'rgba(255,255,255,0.04)' },
+                    border: { color:'rgba(255,255,255,0.06)' }
+                }
+            }
+        }
+    });
+
+    // ── Horizontal Bar ──
+    new Chart(document.getElementById('hbarChart'), {
+        type: 'bar',
+        data: {
+            labels: ['High','Medium','Low'],
+            datasets: [{
+                label: 'Requests',
+                data: [high, medium, low],
+                backgroundColor: ['rgba(239,68,68,0.8)','rgba(245,158,11,0.8)','rgba(34,197,94,0.8)'],
+                borderColor: ['#ef4444','#f59e0b','#22c55e'],
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: {
+                legend: { display:false },
+                tooltip: { ...tooltipDefaults }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: { color:'#475569', font:{ size:12 }, stepSize:1 },
+                    grid: { color:'rgba(255,255,255,0.04)' },
+                    border: { color:'rgba(255,255,255,0.06)' }
+                },
+                y: {
+                    ticks: { color:'#94a3b8', font:{ size:13, weight:'600' } },
+                    grid: { display:false },
+                    border: { color:'rgba(255,255,255,0.06)' }
+                }
+            }
+        }
+    });
+
+    // ── Doughnut ──
+    new Chart(document.getElementById('doughnutChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['High','Medium','Low'],
+            datasets: [{
+                data: [high, medium, low],
+                backgroundColor: ['rgba(239,68,68,0.88)','rgba(245,158,11,0.88)','rgba(34,197,94,0.88)'],
+                borderColor: '#131c2e',
+                borderWidth: 3,
+                hoverOffset: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color:'#94a3b8', padding:14, font:{ size:13 }, usePointStyle:true, pointStyleWidth:10 }
+                },
+                tooltip: {
+                    ...tooltipDefaults,
+                    callbacks: { label: c => ` ${c.label}: ${c.parsed} (${Math.round(c.parsed/total*100)}%)` }
+                }
+            }
+        }
+    });
+
+    // ── Progress Bars ──
+    const priorities = [
+        { name:'High Priority',   value:high,   color:'#ef4444', bg:'rgba(239,68,68,0.15)' },
+        { name:'Medium Priority', value:medium, color:'#f59e0b', bg:'rgba(245,158,11,0.15)' },
+        { name:'Low Priority',    value:low,    color:'#22c55e', bg:'rgba(34,197,94,0.15)' }
+    ];
+    const list = document.getElementById('priorityList');
+    priorities.forEach(p => {
+        const pct = Math.round((p.value / total) * 100);
+        list.innerHTML += `
+        <div class="priority-item">
+            <div class="priority-header">
+                <div class="priority-label-row">
+                    <div class="priority-dot" style="background:${p.color}"></div>
+                    <div class="priority-name">${p.name}</div>
+                    <div class="priority-pct">(${pct}%)</div>
+                </div>
+                <div class="priority-count-badge">${p.value} request${p.value!==1?'s':''}</div>
+            </div>
+            <div class="priority-bar-wrap" style="background:${p.bg}">
+                <div class="priority-bar" style="width:${pct}%;background:${p.color}"></div>
+            </div>
+        </div>`;
+    });
+</script>
+</body>
+</html>

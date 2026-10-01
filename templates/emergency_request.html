@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emergency Request</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --red:    #E83B3B;
+      --amber:  #F59E0B;
+      --teal:   #0BBFBF;
+      --dark:   #0D0F14;
+      --card:   #1A1E2A;
+      --border: rgba(255,255,255,0.07);
+      --text:   #E8EAF0;
+      --muted:  #6B7280;
+      --input-bg: #111420;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--dark);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px; left: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(232,59,59,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13,15,20,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 56px;
+    }
+
+    .nav-brand {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 0.08em;
+      color: var(--teal);
+      text-transform: uppercase;
+      margin-right: auto;
+      text-decoration: none;
+    }
+
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 5px 13px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 10px;
+      transition: opacity 0.2s, transform 0.15s;
+      white-space: nowrap;
+    }
+
+    nav a:hover { opacity: 0.85; transform: translateY(-1px); }
+    nav a.active { outline: 2px solid rgba(255,255,255,0.35); }
+
+    nav a .nav-icon {
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .ni-home      { background: #4F7EFF; }
+    .ni-victim    { background: #9B59FF; }
+    .ni-emergency { background: #E83B3B; }
+    .ni-dashboard { background: #2563EB; }
+    .ni-alerts    { background: #F59E0B; }
+    .ni-resources { background: #10B981; }
+    .ni-manage    { background: #EC4899; }
+    .ni-analytics { background: #06B6D4; }
+    .ni-query     { background: #1e3a5f; } 
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      padding: 3.5rem 3rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .hero-eyebrow {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 10px;
+    }
+
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .hero h1 span {
+      color: transparent;
+      -webkit-text-stroke: 1px rgba(255,255,255,0.25);
+    }
+
+    .hero-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(232,59,59,0.12);
+      border: 1px solid rgba(232,59,59,0.3);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--red);
+    }
+
+    .pulse-dot {
+      width: 7px; height: 7px;
+      background: var(--red);
+      border-radius: 50%;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* ── LAYOUT: split left image + right form ── */
+    main {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: calc(100vh - 56px - 160px);
+    }
+
+    /* ── LEFT PANEL ── */
+    .left-panel {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 3rem;
+      min-height: 500px;
+    }
+
+    .left-panel img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      filter: brightness(0.45) saturate(0.8);
+    }
+
+    .left-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(13,15,20,0.95) 0%, rgba(13,15,20,0.3) 60%, transparent 100%);
+    }
+
+    .left-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .left-content h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+
+    .left-content p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 24px;
+      max-width: 340px;
+    }
+
+    .stat-row {
+      display: flex;
+      gap: 20px;
+    }
+
+    .stat-pill {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 16px;
+      text-align: center;
+    }
+
+    .stat-pill .num {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--red);
+    }
+
+    .stat-pill .lbl {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── RIGHT FORM PANEL ── */
+    .right-panel {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2.5rem;
+      border-left: 1px solid var(--border);
+    }
+
+    .form-card {
+      width: 100%;
+      max-width: 420px;
+      animation: fadeUp 0.45s both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .form-subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    .field { margin-bottom: 20px; }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .field input::placeholder { color: #3a3f50; }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(232,59,59,0.12);
+    }
+
+    .select-wrap {
+      position: relative;
+    }
+
+    .select-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    /* priority colour pills inside select */
+    .field select option { background: #1A1E2A; }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* priority indicator */
+    .priority-hint {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .ph {
+      flex: 1;
+      height: 4px;
+      border-radius: 2px;
+    }
+
+    .ph-high   { background: var(--red); }
+    .ph-medium { background: var(--amber); }
+    .ph-low    { background: var(--teal); }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 24px 0;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--red);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .submit-btn:hover {
+      background: #c9302a;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(232,59,59,0.35);
+    }
+
+    .submit-btn:active { transform: scale(0.99); }
+
+    @media (max-width: 860px) {
+      main { grid-template-columns: 1fr; }
+      .left-panel { min-height: 260px; }
+      .right-panel { border-left: none; border-top: 1px solid var(--border); }
+      nav a .nav-label { display: none; }
+      .hero { padding: 2rem 1.5rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="nav-brand" href="/">⬡ DisasterOps</a>
+    <a href="/"><span class="nav-icon ni-home">🏠</span><span class="nav-label">Home</span></a>
+    <a href="/victim"><span class="nav-icon ni-victim">👤</span><span class="nav-label">Victim</span></a>
+    <a href="/request" class="active"><span class="nav-icon ni-emergency">🚨</span><span class="nav-label">Emergency</span></a>
+    <a href="/dashboard"><span class="nav-icon ni-dashboard">📊</span><span class="nav-label">Dashboard</span></a>
+    <a href="/alerts"><span class="nav-icon ni-alerts">🔔</span><span class="nav-label">Alerts</span></a>
+    <a href="/resources"><span class="nav-icon ni-resources">📦</span><span class="nav-label">Resources</span></a>
+    <a href="/manage_resources"><span class="nav-icon ni-manage">⚙️</span><span class="nav-label">Manage</span></a>
+    <a href="/analytics"><span class="nav-icon ni-analytics">📈</span><span class="nav-label">Analytics</span></a>
+    <a href="/query"><span class="nav-icon ni-query">🗄️</span><span class="nav-label">Query</span></a>
+  </nav>
+
+  <div class="hero">
+    <div>
+      <div class="hero-eyebrow">Crisis Response</div>
+      <h1>Emergency <span>Request</span></h1>
+    </div>
+    <div class="hero-badge">
+      <span class="pulse-dot"></span>
+      Urgent intake open
+    </div>
+  </div>
+
+  <main>
+
+    <!-- LEFT: image + stats -->
+    <div class="left-panel">
+      <img
+        src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=900&auto=format&fit=crop"
+        alt="Emergency vehicles at night"
+        onerror="this.src='https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=900&auto=format&fit=crop'"
+      >
+      <div class="left-overlay"></div>
+      <div class="left-content">
+        <h2>Every second counts in a disaster.</h2>
+        <p>Submit emergency requests immediately to ensure victims receive priority response from our relief teams on the ground.</p>
+        <div class="stat-row">
+          <div class="stat-pill">
+            <div class="num">8</div>
+            <div class="lbl">Active victims</div>
+          </div>
+          <div class="stat-pill">
+            <div class="num">5</div>
+            <div class="lbl">Pending requests</div>
+          </div>
+          <div class="stat-pill">
+            <div class="num">2300</div>
+            <div class="lbl">Resources ready</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: form -->
+    <div class="right-panel">
+      <div class="form-card">
+        <div class="form-title">Submit a Request</div>
+        <div class="form-subtitle">Fill in the details to log an emergency. High priority requests are dispatched first.</div>
+
+        <form action="/request" method="POST">
+
+          <div class="field-row">
+            <div class="field">
+              <label>Request ID</label>
+              <input type="number" name="request_id" placeholder="e.g. 201" required>
+            </div>
+            <div class="field">
+              <label>Victim ID</label>
+              <input type="number" name="victim_id" placeholder="e.g. 5" required>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Priority</label>
+            <div class="select-wrap">
+              <select name="priority">
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+            <div class="priority-hint">
+              <div class="ph ph-high"></div>
+              <div class="ph ph-medium"></div>
+              <div class="ph ph-low"></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Status</label>
+            <div class="select-wrap">
+              <select name="status">
+                <option value="Pending">Pending</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <button type="submit" class="submit-btn">
+            🚨 Submit Emergency Request
+          </button>
+
+        </form>
+      </div>
+    </div>
+
+  </main>
+
+</body>
+</html>

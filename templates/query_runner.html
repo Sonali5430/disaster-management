@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Query Runner — DisasterOps</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:       #0a0a0c;
+            --surface:  #111116;
+            --surface2: #18181f;
+            --surface3: #1e1e28;
+            --border:   rgba(255,255,255,0.07);
+            --accent:   #e8321a;
+            --teal:     #00d4aa;
+            --blue:     #3b8eea;
+            --amber:    #f5a623;
+            --green:    #22c55e;
+            --red:      #ef4444;
+            --text:     #e8e8f0;
+            --muted:    #6b6b80;
+            --label:    #9999b0;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Syne', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── NAVBAR ── */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10,10,12,0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0 24px;
+            height: 60px;
+        }
+
+        .navbar .logo {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 20px;
+            letter-spacing: 0.12em;
+            color: var(--text);
+            text-decoration: none;
+            margin-right: 32px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .navbar .logo span {
+            display: inline-block;
+            width: 8px; height: 8px;
+            background: var(--teal);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--teal);
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%,100% { opacity:1; transform:scale(1); }
+            50%      { opacity:0.5; transform:scale(0.7); }
+        }
+
+        .navbar a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            padding: 6px 14px;
+            border-radius: 6px;
+            transition: color 0.2s, background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .navbar a:hover  { color: var(--text); background: rgba(255,255,255,0.05); }
+        .navbar a.active { color: var(--blue); background: rgba(59,142,234,0.1); }
+
+        /* ── HERO ── */
+        .hero {
+            position: relative;
+            padding: 52px 40px 36px;
+            overflow: hidden;
+        }
+
+        .hero::after {
+            content: 'SQL';
+            position: absolute;
+            right: -10px; top: 0;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 200px;
+            color: rgba(255,255,255,0.02);
+            line-height: 1;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .hero-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            color: var(--blue);
+            text-transform: uppercase;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hero-label::before {
+            content: '';
+            display: inline-block;
+            width: 24px; height: 1px;
+            background: var(--blue);
+        }
+
+        .hero-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(48px, 6vw, 80px);
+            line-height: 0.95;
+            letter-spacing: 0.02em;
+        }
+
+        .hero-title .ghost {
+            color: transparent;
+            -webkit-text-stroke: 1px rgba(255,255,255,0.12);
+        }
+
+        /* ── MAIN LAYOUT ── */
+        .workspace {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 0 40px 60px;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        /* ── EDITOR PANEL ── */
+        .editor-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .editor-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface2);
+        }
+
+        .editor-tabs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+        }
+
+        .tab-dot.red    { background: #ef4444; }
+        .tab-dot.amber  { background: #f59e0b; }
+        .tab-dot.green  { background: #22c55e; }
+
+        .tab-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--muted);
+            margin-left: 8px;
+        }
+
+        .editor-actions { display: flex; gap: 8px; }
+
+        .btn-clear {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-clear:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+        /* Line numbers + textarea wrapper */
+        .editor-body {
+            display: flex;
+            min-height: 220px;
+            position: relative;
+        }
+
+        .line-numbers {
+            padding: 16px 0;
+            width: 44px;
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--muted);
+            background: var(--surface2);
+            border-right: 1px solid var(--border);
+            user-select: none;
+            padding-right: 10px;
+        }
+
+        .query-textarea {
+            flex: 1;
+            background: var(--surface);
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.7;
+            padding: 16px 20px;
+            border: none;
+            outline: none;
+            resize: vertical;
+            min-height: 220px;
+            caret-color: var(--teal);
+            tab-size: 4;
+        }
+
+        .query-textarea::placeholder { color: var(--muted); }
+        .query-textarea:focus { background: rgba(59,142,234,0.03); }
+
+        .editor-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 18px;
+            border-top: 1px solid var(--border);
+            background: var(--surface2);
+        }
+
+        .kbd-hints {
+            display: flex;
+            gap: 16px;
+        }
+
+        .kbd-hint {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        kbd {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 10px;
+            color: var(--label);
+        }
+
+        .run-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 24px;
+            background: var(--blue);
+            color: white;
+            font-family: 'Syne', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+            letter-spacing: 0.03em;
+        }
+
+        .run-btn:hover {
+            background: #2563eb;
+            box-shadow: 0 6px 24px rgba(59,142,234,0.4);
+            transform: translateY(-1px);
+        }
+
+        .run-btn:active { transform: translateY(0); }
+
+        .run-icon { font-size: 16px; }
+
+        /* ── SIDE PANEL ── */
+        .side-panel { display: flex; flex-direction: column; gap: 16px; }
+
+        .side-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .side-card-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--label);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .side-card-header .dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--teal);
+            box-shadow: 0 0 6px var(--teal);
+        }
+
+        .snippet-list { padding: 8px; }
+
+        .snippet {
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+            border: 1px solid transparent;
+        }
+
+        .snippet:hover {
+            background: rgba(255,255,255,0.04);
+            border-color: var(--border);
+        }
+
+        .snippet-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--blue);
+            margin-bottom: 3px;
+        }
+
+        .snippet-preview {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tables-list { padding: 8px; }
+
+        .table-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--label);
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .table-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+        .table-item .icon { font-size: 14px; }
+
+        /* ── RESULTS ── */
+        .results-section {
+            max-width: 1300px;
+            margin: 0 auto 60px;
+            padding: 0 40px;
+        }
+
+        .results-bar {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .results-bar-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 24px;
+            letter-spacing: 0.05em;
+        }
+
+        .results-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        .results-badge.success {
+            background: rgba(34,197,94,0.1);
+            border: 1px solid rgba(34,197,94,0.25);
+            color: var(--green);
+        }
+
+        .results-badge.empty {
+            background: rgba(245,166,35,0.1);
+            border: 1px solid rgba(245,166,35,0.25);
+            color: var(--amber);
+        }
+
+        .results-badge.error {
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.25);
+            color: var(--red);
+        }
+
+        /* Table */
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+        }
+
+        thead {
+            background: var(--surface2);
+            position: sticky;
+            top: 0;
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 10px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--label);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 11px 16px;
+            color: var(--text);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            white-space: nowrap;
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        tbody tr { animation: row-in 0.3s ease both; }
+        tbody tr:nth-child(1)  { animation-delay: 0.03s; }
+        tbody tr:nth-child(2)  { animation-delay: 0.06s; }
+        tbody tr:nth-child(3)  { animation-delay: 0.09s; }
+        tbody tr:nth-child(4)  { animation-delay: 0.12s; }
+        tbody tr:nth-child(5)  { animation-delay: 0.15s; }
+
+        @keyframes row-in {
+            from { opacity:0; transform:translateX(-8px); }
+            to   { opacity:1; transform:translateX(0); }
+        }
+
+        /* Error box */
+        .error-box {
+            background: rgba(239,68,68,0.07);
+            border: 1px solid rgba(239,68,68,0.2);
+            border-radius: 12px;
+            padding: 20px 24px;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+        }
+
+        .error-icon { font-size: 22px; flex-shrink: 0; }
+
+        .error-msg {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: #fca5a5;
+            line-height: 1.6;
+        }
+
+        /* Success (non-SELECT) */
+        .success-box {
+            background: rgba(34,197,94,0.07);
+            border: 1px solid rgba(34,197,94,0.2);
+            border-radius: 12px;
+            padding: 20px 24px;
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .success-icon { font-size: 24px; }
+
+        .success-msg {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: #86efac;
+        }
+
+        /* Empty state */
+        .empty-box {
+            text-align: center;
+            padding: 48px 20px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .empty-box .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <a href="/" class="logo"><span></span>DISASTEROPS</a>
+    <a href="/">🏠 Home</a>
+    <a href="/victim">🙍 Victim</a>
+    <a href="/request">🚨 Emergency</a>
+    <a href="/dashboard">📊 Dashboard</a>
+    <a href="/alerts">🔔 Alerts</a>
+    <a href="/resources">📦 Resources</a>
+    <a href="/manage_resources">⚙️ Manage</a>
+    <a href="/analytics">📈 Analytics</a>
+    <a href="/query" class="active">🗄️ Query</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-label">Database Console</div>
+    <h1 class="hero-title">SQL Query<br><span class="ghost">Runner</span></h1>
+</section>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+    <!-- EDITOR -->
+    <div class="editor-panel">
+        <div class="editor-topbar">
+            <div class="editor-tabs">
+                <div class="tab-dot red"></div>
+                <div class="tab-dot amber"></div>
+                <div class="tab-dot green"></div>
+                <span class="tab-label">query.sql</span>
+            </div>
+            <div class="editor-actions">
+                <button class="btn-clear" onclick="clearEditor()">✕ Clear</button>
+            </div>
+        </div>
+
+        <form method="POST" id="queryForm">
+            <div class="editor-body">
+                <div class="line-numbers" id="lineNumbers">1</div>
+                <textarea
+                    class="query-textarea"
+                    name="query"
+                    id="queryEditor"
+                    placeholder="-- Write your SQL query here&#10;-- e.g. SELECT * FROM Resources"
+                    spellcheck="false"
+                >{{ query if query else '' }}</textarea>
+            </div>
+
+            <div class="editor-footer">
+                <div class="kbd-hints">
+                    <span class="kbd-hint"><kbd>Tab</kbd> indent</span>
+                    <span class="kbd-hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> run</span>
+                </div>
+                <button type="submit" class="run-btn">
+                    <span class="run-icon">▶</span> Run Query
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- SIDE PANEL -->
+    <div class="side-panel">
+
+        <!-- Quick snippets -->
+        <div class="side-card">
+            <div class="side-card-header">
+                <span class="dot"></span> Quick Snippets
+            </div>
+            <div class="snippet-list">
+                <div class="snippet" onclick="insertSnippet('SELECT * FROM Resources')">
+                    <div class="snippet-name">All Resources</div>
+                    <div class="snippet-preview">SELECT * FROM Resources</div>
+                </div>
+                <div class="snippet" onclick="insertSnippet('SELECT * FROM Victims')">
+                    <div class="snippet-name">All Victims</div>
+                    <div class="snippet-preview">SELECT * FROM Victims</div>
+                </div>
+                <div class="snippet" onclick="insertSnippet('SELECT * FROM Emergency_Requests')">
+                    <div class="snippet-name">Emergency Requests</div>
+                    <div class="snippet-preview">SELECT * FROM Emergency_Requests</div>
+                </div>
+                <div class="snippet" onclick="insertSnippet('ALTER TABLE Resources ADD location_id NUMBER')">
+                    <div class="snippet-name">Add location_id</div>
+                    <div class="snippet-preview">ALTER TABLE Resources ADD...</div>
+                </div>
+                <div class="snippet" onclick="insertSnippet('UPDATE Resources SET location_id = 1 WHERE Resource_ID = 1')">
+                    <div class="snippet-name">Set location_id</div>
+                    <div class="snippet-preview">UPDATE Resources SET...</div>
+                </div>
+                <div class="snippet" onclick="insertSnippet('COMMIT')">
+                    <div class="snippet-name">Commit</div>
+                    <div class="snippet-preview">COMMIT</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tables -->
+        <div class="side-card">
+            <div class="side-card-header">
+                <span class="dot"></span> Your Tables
+            </div>
+            <div class="tables-list">
+                <div class="table-item" onclick="insertSnippet('SELECT * FROM Resources')">
+                    <span class="icon">🗂️</span> Resources
+                </div>
+                <div class="table-item" onclick="insertSnippet('SELECT * FROM Victims')">
+                    <span class="icon">🗂️</span> Victims
+                </div>
+                <div class="table-item" onclick="insertSnippet('SELECT * FROM Emergency_Requests')">
+                    <span class="icon">🗂️</span> Emergency_Requests
+                </div>
+                <div class="table-item" onclick="insertSnippet('SELECT * FROM Locations')">
+                    <span class="icon">🗂️</span> Locations
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- RESULTS -->
+{% if error %}
+<div class="results-section">
+    <div class="results-bar">
+        <span class="results-bar-title">Result</span>
+        <span class="results-badge error">✕ Error</span>
+    </div>
+    <div class="error-box">
+        <span class="error-icon">⚠️</span>
+        <div class="error-msg">{{ error }}</div>
+    </div>
+</div>
+
+{% elif results is not none %}
+    {% if results == [] %}
+    <div class="results-section">
+        <div class="results-bar">
+            <span class="results-bar-title">Result</span>
+            <span class="results-badge empty">0 rows</span>
+        </div>
+        <div class="empty-box">
+            <div class="icon">📭</div>
+            <p>Query ran successfully but returned no rows.</p>
+        </div>
+    </div>
+
+    {% elif results == none %}
+    <div class="results-section">
+        <div class="results-bar">
+            <span class="results-bar-title">Result</span>
+            <span class="results-badge success">✓ Success</span>
+        </div>
+        <div class="success-box">
+            <span class="success-icon">✅</span>
+            <span class="success-msg">Query executed successfully. Changes committed.</span>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="results-section">
+        <div class="results-bar">
+            <span class="results-bar-title">Result</span>
+            <span class="results-badge success">✓ {{ results|length }} rows</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        {% for col in columns %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in results %}
+                    <tr>
+                        {% for cell in row %}
+                        <td>{{ cell if cell is not none else '—' }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+{% endif %}
+
+<script>
+    const editor  = document.getElementById('queryEditor');
+    const lineNos = document.getElementById('lineNumbers');
+
+    function updateLineNumbers() {
+        const lines = editor.value.split('\n').length;
+        lineNos.innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('<br>');
+    }
+
+    editor.addEventListener('input', updateLineNumbers);
+    updateLineNumbers();
+
+    // Tab key inserts spaces
+    editor.addEventListener('keydown', e => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const s = editor.selectionStart;
+            editor.value = editor.value.substring(0, s) + '    ' + editor.value.substring(editor.selectionEnd);
+            editor.selectionStart = editor.selectionEnd = s + 4;
+            updateLineNumbers();
+        }
+        // Ctrl+Enter submits
+        if (e.key === 'Enter' && e.ctrlKey) {
+            document.getElementById('queryForm').submit();
+        }
+    });
+
+    function clearEditor() {
+        editor.value = '';
+        updateLineNumbers();
+        editor.focus();
+    }
+
+    function insertSnippet(sql) {
+        editor.value = sql;
+        updateLineNumbers();
+        editor.focus();
+    }
+</script>
+
+</body>
+</html>
